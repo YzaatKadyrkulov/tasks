@@ -226,4 +226,100 @@
 5. Создайте файл settings.ini и укажите в нем диапазон чисел, количество попыток и начальный капитал.
 6. Создайте основной модуль для запуска игры (main.py).
 7. Создайте модуль с логикой игры (logic.py).
+
+main.py — entry point for the Guess the Number betting game.
+ 
+Rules:
+  - A secret number is chosen within [MIN_NUMBER, MAX_NUMBER].
+  - Each turn the player places a bet, then guesses the number.
+  - Correct guess → equity increases by the bet amount.
+  - Wrong guess   → equity decreases by the bet amount.
+  - The game ends when the player runs out of attempts, runs out of money,
+    or correctly guesses the number.
 """
+
+from config import INITIAL_EQUITY, MAX_ATTEMPTS
+from logic import(
+    generate_secret_number,
+    validate_bet,
+    validate_guess,
+    resolve_round,
+    is_game_over,
+    build_status,
+)
+
+
+def get_int_input(prompt: str) -> int | None:
+    """Prompt the user for an integer; return None on non-numeric input."""
+    raw = input(prompt).strip()
+    try:
+        return int(raw)
+    except ValueError:
+        print('Please enter a whole number.')
+        return None
+
+
+def play_game() -> None:
+    print("\n========================================")
+    print("   Welcome to Guess the Number!")
+    print("========================================")
+    print(f"  Starting equity : ${INITIAL_EQUITY}")
+    print(f"  Attempts        : {MAX_ATTEMPTS}")
+    print("  Double your bet on a correct guess,")
+    print("  lose your bet on a wrong guess.\n")
+
+    secret = generate_secret_number()
+    equity = INITIAL_EQUITY
+    attempts_left = MAX_ATTEMPTS
+
+    while True:
+        # Show current status
+        print(build_status(equity, attempts_left))
+
+        # --- Collect bet ---
+        bet = None
+        while bet is None:
+            bet = get_int_input(' Enter your bet: $')
+            if bet is not None:
+                error = validate_bet(bet, equity)
+                if error:
+                    print(f' {error}')
+                    bet = None
+
+        # --- Collect guess ---
+        guess = None
+        while guess is None:
+            guess = get_int_input(' Enter your guess: ')
+            if guess is not None:
+                error = validate_guess(guess)
+                if error:
+                    print(f' {error}')
+                    guess = None
+
+        # --- Resolve the round ---
+        equity, message = resolve_round(guess, secret, bet, equity)
+        print(f' \n {message}')
+        attempts_left -= 1
+
+        # --- Check game-over conditions ---
+        ended, reason = is_game_over(equity, attempts_left)
+        if ended:
+            print(f'\n  {reason}')
+            print(f'  The secret number was: {secret}')
+            print(f'  Final equity: ${equity}')
+            break
+
+    print("\n========================================\n")
+
+
+def main() -> None:
+    while True:
+        play_game()
+        again = input('Play again? (y/n): ').strip().lower()
+        if again != 'y':
+            print('Thanks for playing! Goodbye.')
+            break
+
+
+if __name__ == '__main__':
+    main()
